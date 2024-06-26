@@ -47,10 +47,21 @@ server.post("/signup", (req,res)=>{
             }
         })
 
-        console.log(hashed_password);
+        user.save().then((u)=>{
+
+            return res.status(200).json({user: u});
+        })
+        .catch(err=>{
+
+            if(err.code == 11000){
+                return res.status(500).json({"error": "Email already exists"});
+            }
+
+            return res.status(500).json({"error": err.massage})
+        })
+       
         
     })
-    return res.status(200).json({"status": "okay"});
 
 })
 
