@@ -2,7 +2,11 @@ import express from "express";
 import mongoose from "mongoose";
 import "dotenv/config";
 import bcrypt from "bcrypt";
+import { nanoid } from "nanoid";
+
+// importing schema
 import User from "./Schema/User.js";
+
 
 const server = express();
 let PORT = /*process.env.PORT ||*/ 3000;
@@ -15,6 +19,13 @@ server.use(express.json());
 mongoose.connect(process.env.DB_LOCATION,{
     autoIndex: true,
 })
+
+const generateUsername = async (email) => {
+    const [username] = email.split('@');
+    const isUsernameNotUnique = await User.exists({ "personal_info.username": username });
+    return isUsernameNotUnique ? `${username}${nanoid(5)}` : username;
+}
+
 
 server.post("/signup", (req,res)=>{
     let {fullname, email, password} = req.body; 
@@ -35,8 +46,8 @@ server.post("/signup", (req,res)=>{
     }
     
     // hashing the password
-    bcrypt.hash(password, 10, (err, hashed_password)=>{
-        let username = email.split("@")[0];
+    bcrypt.hash(password, 10, async (err, hashed_password)=>{
+        let username = await generateUsername(email);
         
         let user = new User({
             personal_info: {
