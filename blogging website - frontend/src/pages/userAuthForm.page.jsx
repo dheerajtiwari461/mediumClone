@@ -1,17 +1,26 @@
-import { useRef } from "react";
+
 import AnimationWrapper from "../common/page-animation";
 import InputBox from "../components/input.component";
 import googleIcon from "../imgs/google.png";
 import {Link} from "react-router-dom";
 import {Toaster, toast} from "react-hot-toast";
 import axios from "axios";
+import { storeInSession } from "../common/session";
 
 const UserAuthForm = ({ type }) => {
 
-  const authForm = useRef();
+ 
  const userAuthThroughService=(serverRoute, formData)=>{
 
-  axios.post(import.meta.env.VITE_SERVER_DOMAIN + serverRoute)
+  axios.post(import.meta.env.VITE_SERVER_DOMAIN + serverRoute, formData)
+  .then(({data})=>{
+    storeInSession("user", JSON.stringify(data));
+    console.log(sessionStorage);
+    
+  })
+  .catch(({response})=>{
+    toast.error(response.data.error)
+  })
 
  }
 
@@ -26,7 +35,7 @@ const UserAuthForm = ({ type }) => {
 
   //  formData
 
-  let form = new FormData(authForm.current);
+  let form = new FormData(formELement);
   let formData = {};
 
   for(let [key, value] of form.entries()){
@@ -61,7 +70,7 @@ userAuthThroughService(serverRoute, formData);
       <AnimationWrapper keyValue={type}>
     <section className="h-cover flex items-center justify-center">
     <Toaster/>
-      <form ref={authForm} className="w-[80%] max-w-[400px]">
+      <form id="formELement" className="w-[80%] max-w-[400px]">
         <h1 className="text-4xl font-galasio capitalize text-center mb-24">
           {type == "sign-in" ? "Welcome back" : "Join Us Today"}
         </h1>
