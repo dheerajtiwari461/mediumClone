@@ -5,6 +5,9 @@ import bcrypt from "bcrypt";
 import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken";
 import cors from "cors";
+import admin from "firebase-admin";
+import serviceAccountKey from "./mern-blog-c7492-firebase-adminsdk-5i4ya-e5a5f17fb7.json" assert {type: "json"};
+import {getAuth} from "firebase-admin/auth";
 
 // importing schema
 import User from "./Schema/User.js";
@@ -13,6 +16,10 @@ import User from "./Schema/User.js";
 const server = express();
 server.use(cors());
 let PORT = /*process.env.PORT ||*/ 3000;
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccountKey)
+})
 
 let emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/; // regex for email
 let passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/; // regex for password
@@ -101,17 +108,23 @@ server.post("/signin", (req,res)=>{
         if(!user){
             return res.status(403).json({"error": "email not found"});
         }
-        bcrypt.compare(password, user.personal_info.password, (err, result)=>{
-            if(err){
-                return res.status(40).json({"error": "Error occur while login please try again"});
-            }
 
-            if(!result){
-                return res.status(403).json({"error": "Incorrect password"});
-            }else{
-                return res.status(200).json(formatDatatoSend(user));
-            }
-        })
+        if(!user.google_auth){
+            bcrypt.compare(password, user.personal_info.password, (err, result)=>{
+                if(err){
+                    return res.status(40).json({"error": "Error occur while login please try again"});
+                }
+    
+                if(!result){
+                    return res.status(403).json({"error": "Incorrect password"});
+                }else{
+                    return res.status(200).json(formatDatatoSend(user));
+                }
+            })
+        }else{
+            return res.status(403).json({"error": "Account was created with google. Please login with google"});
+        }
+        
     })
     .catch(err=>{
         console.log(err.message);
@@ -119,6 +132,52 @@ server.post("/signin", (req,res)=>{
     })
 })
 
+server.post("/google-auth", async (req,res)=>{
+
+    let{access_token} = req.body;
+    getAuth()
+    .verifyIdToken(access_token)
+    .then(async (decodedUser)=>{
+        let {email, name, picture} = decodedUser;
+        picture = picture.replace("s96-c", "384-c");
+        let user = await User.findOne({"personal_info.email": email}).select("personal_info.fullname personal_info.username personal_info.profile_img google_auth")
+        .then((u)=>{
+            return u || null;
+        })
+        .catch(err=>{
+            return res.status(500).json({"error": err.message});
+        })
+
+        if(user){ // login
+            if(!user.google_auth){
+                return res.status(403).json({"error": "Please login with email and password"});
+            }
+
+        }else { //signup
+            let username = await generateUsername(email);
+
+            user = new User({
+                personal_info: {fullname: name, email,  username},
+                google_auth: true
+            })
+
+            await user.save().then((u)=>{
+                user = u;
+            }).catch((err)=>{
+                return res.status(500).json({"error": err.message});
+            })
+
+        }
+
+        return res.status(200).json(formatDatatoSend(user));
+
+    })
+    .catch((err)=>{
+        return res.status(500).json({"error": "Failed to authenticate you with google. Try with some other google account "});
+    })
+
+
+})
 
 server.listen(PORT,()=>{
     console.log(`server running on port ${PORT}`);

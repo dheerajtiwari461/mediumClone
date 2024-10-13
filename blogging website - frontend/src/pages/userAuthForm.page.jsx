@@ -8,6 +8,7 @@ import axios from "axios";
 import { storeInSession } from "../common/session";
 import { useContext, useRef } from "react";
 import { UserContext } from "../App";
+import { authWithGoogle } from "../common/firebase";
 
 const UserAuthForm = ({ type }) => {
 
@@ -67,8 +68,28 @@ if (!passwordRegex.test(password)) {
 }
 
 userAuthThroughService(serverRoute, formData);
-   
 
+
+
+}
+const handleGoogleAuth =  (e)=>{
+  e.preventDefault();
+   authWithGoogle().then(user =>{
+   
+    let serverRoute = "/google-auth";
+
+    let formData = {
+      access_token: user.accessToken
+    }
+
+    userAuthThroughService(serverRoute, formData);
+    
+  })
+  .catch(err=>{
+    toast.error('trouble login through google');
+    return console.log(err);
+    
+  })
 }
 
   return (
@@ -121,7 +142,9 @@ userAuthThroughService(serverRoute, formData);
           <hr className="w-1/2 border-black" />
         </div>
 
-        <button className="btn-dark flex items-center justify-center gap-4 w-[90%] center">
+        <button className="btn-dark flex items-center justify-center gap-4 w-[90%] center"
+        onClick={handleGoogleAuth}
+        >
           <img src={googleIcon} className="w-5"/>
           Continue with Google
         </button>
@@ -147,5 +170,4 @@ userAuthThroughService(serverRoute, formData);
     </AnimationWrapper>
   );
 };
-
 export default UserAuthForm;
