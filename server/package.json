@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@azure/storage-blob": "^12.25.0",
     "aws-sdk": "^2.1432.0",
     "bcrypt": "^5.1.0",
     "cors": "^2.8.5",
